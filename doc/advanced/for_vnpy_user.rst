@@ -83,8 +83,8 @@ TqSdk 则使用基于网络协作的组件设计. 如下图:
       api.wait_update()
 
       if api.is_changing(klines.iloc[-1], "datetime"):  # 产生新k线:重新计算SMA
-          short_avg = ma(klines["close"], SHORT)  # 短周期
-          long_avg = ma(klines["close"], LONG)  # 长周期
+          short_avg = ma(klines.close, SHORT)  # 短周期
+          long_avg = ma(klines.close, LONG)  # 长周期
 
           # 均线下穿，做空
           if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
@@ -133,7 +133,7 @@ TqSdk将每个策略作为一个独立进程运行, 这样就可以:
   while True:
       api.wait_update()
       if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-          spread = quote_near["last_price"] - quote_deferred["last_price"]
+          spread = quote_near.last_price - quote_deferred.last_price
           print("当前价差:", spread)
           if spread > 250:
               print("目标持仓: 空近月，多远月")

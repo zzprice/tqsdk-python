@@ -24,15 +24,15 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
       while True:
         api.wait_update()
         if api.is_changing(klines.iloc[-1], "datetime"):
-          short_avg = ma(klines["close"], SHORT)
-          long_avg = ma(klines["close"], LONG)
+          short_avg = ma(klines.close, SHORT)
+          long_avg = ma(klines.close, LONG)
           if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
             target_pos.set_target_volume(-1)
           if short_avg.iloc[-2] < long_avg.iloc[-2] and short_avg.iloc[-1] > long_avg.iloc[-1]:
             target_pos.set_target_volume(1)
     except BacktestFinished:
       api.close()
-      print("SHORT=", SHORT, "最终权益=", acc.account["balance"])   # 每次回测结束时, 输出使用的参数和最终权益
+      print("SHORT=", SHORT, "最终权益=", acc.account.balance)   # 每次回测结束时, 输出使用的参数和最终权益
 
 
 多进程并发执行多个回测任务
@@ -57,15 +57,15 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
       while True:
         api.wait_update()
         if api.is_changing(klines.iloc[-1], "datetime"):
-          short_avg = ma(klines["close"], SHORT)
-          long_avg = ma(klines["close"], LONG)
+          short_avg = ma(klines.close, SHORT)
+          long_avg = ma(klines.close, LONG)
           if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
             target_pos.set_target_volume(-3)
           if short_avg.iloc[-2] < long_avg.iloc[-2] and short_avg.iloc[-1] > long_avg.iloc[-1]:
             target_pos.set_target_volume(3)
     except BacktestFinished:
       api.close()
-      print("SHORT=", SHORT, "最终权益=", acc.account["balance"])  # 每次回测结束时, 输出使用的参数和最终权益
+      print("SHORT=", SHORT, "最终权益=", acc.account.balance)  # 每次回测结束时, 输出使用的参数和最终权益
 
 
   if __name__ == '__main__':
@@ -77,3 +77,5 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
     p.close()
     p.join()
     print('All subprocesses done.')
+
+**注意: 由于服务器流控限制, 同时执行的回测任务请勿超过10个**

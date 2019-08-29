@@ -2,14 +2,14 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 价差回归
 当近月-远月的价差大于200时做空近月，做多远月
 当价差小于150时平仓
 '''
-api = TqApi(TqSim())
+api = TqApi()
 quote_near = api.get_quote("SHFE.rb1910")
 quote_deferred = api.get_quote("SHFE.rb2001")
 # 创建 rb1910 的目标持仓 task，该 task 负责调整 rb1910 的仓位到指定的目标仓位
@@ -20,7 +20,7 @@ target_pos_deferred = TargetPosTask(api, "SHFE.rb2001")
 while True:
     api.wait_update()
     if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-        spread = quote_near["last_price"] - quote_deferred["last_price"]
+        spread = quote_near.last_price - quote_deferred.last_price
         print("当前价差:", spread)
         if spread > 250:
             print("目标持仓: 空近月，多远月")

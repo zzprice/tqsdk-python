@@ -6,11 +6,14 @@ import weakref
 from datetime import date, datetime
 from tqsdk.api import TqApi, TqChan
 from tqsdk.exceptions import BacktestFinished
+from tqsdk.objs import Entity
 
 
 class TqBacktest(object):
     """
     天勤回测类
+
+     该类只针对天勤外部IDE编写使用, 在天勤内编写完策略后选择该策略直接点击回测即可
 
     将该类传入 TqApi 的构造函数, 则策略就会进入回测模式
 
@@ -33,6 +36,7 @@ class TqBacktest(object):
 
     回测结束后会抛出 BacktestFinished 例外
     """
+
     def __init__(self, start_dt, end_dt):
         """
         创建天勤回测类
@@ -43,24 +47,32 @@ class TqBacktest(object):
             end_dt (date/datetime): 回测结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
         """
         if isinstance(start_dt, datetime):
-            self.current_dt = int(start_dt.timestamp()*1e9)
+            self.current_dt = int(start_dt.timestamp() * 1e9)
+        elif isinstance(start_dt, date):
+            self.current_dt = TqApi._get_trading_day_start_time(
+                int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         else:
-            self.current_dt = TqApi._get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp())*1000000000)
+            raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
         if isinstance(end_dt, datetime):
-            self.end_dt = int(end_dt.timestamp()*1e9)
+            self.end_dt = int(end_dt.timestamp() * 1e9)
+        elif isinstance(end_dt, date):
+            self.end_dt = TqApi._get_trading_day_end_time(
+                int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         else:
-            self.end_dt = TqApi._get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp())*1000000000)
+            raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
 
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
         self.api = api
-        self.logger = api.logger.getChild("TqBacktest")  # 调试信息输出
+        self.logger = api._logger.getChild("TqBacktest")  # 调试信息输出
         self.sim_send_chan = sim_send_chan
         self.sim_recv_chan = sim_recv_chan
         self.md_send_chan = md_send_chan
         self.md_recv_chan = md_recv_chan
         self.pending_peek = False
-        self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
+        self.data = Entity()  # 数据存储
+        self.data["_path"] = []
+        self.data["_listener"] = weakref.WeakSet()
         self.serials = {}  # 所有原始数据序列
         self.quotes = {}
         self.diffs = []
@@ -70,16 +82,28 @@ class TqBacktest(object):
             async for pack in self.sim_send_chan:
                 self.logger.debug("TqBacktest message received: %s", pack)
                 if pack["aid"] == "subscribe_quote":
-                    self.diffs.append({"ins_list": pack["ins_list"]})
+                    self.diffs.append({
+                                          "ins_list": pack["ins_list"]
+                                      })
                     for ins in pack["ins_list"].split(","):
                         await self._ensure_quote(ins)
                     await self._send_diff()
                 elif pack["aid"] == "set_chart":
                     if pack["ins_list"]:
-                        self.diffs.append({"charts": {pack["chart_id"]: {"state": pack}}})
+                        self.diffs.append({
+                                              "charts": {
+                                                  pack["chart_id"]: {
+                                                      "state": pack
+                                                  }
+                                              }
+                                          })
                         await self._ensure_serial(pack["ins_list"], pack["duration"])
                     else:
-                        self.diffs.append({"charts": {pack["chart_id"]: None}})
+                        self.diffs.append({
+                                              "charts": {
+                                                  pack["chart_id"]: None
+                                              }
+                                          })
                     await self._send_diff()
                 elif pack["aid"] == "peek_message":
                     self.pending_peek = True
@@ -92,9 +116,11 @@ class TqBacktest(object):
 
     async def _md_handler(self):
         async for pack in self.md_recv_chan:
-            await self.md_send_chan.send({"aid": "peek_message"})
+            await self.md_send_chan.send({
+                                             "aid": "peek_message"
+                                         })
             for d in pack.get("data", []):
-                TqApi._merge_diff(self.data, d, self.api.prototype, False)
+                TqApi._merge_diff(self.data, d, self.api._prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
@@ -158,7 +184,11 @@ class TqBacktest(object):
                     await self._fetch_serial(min_serial)
             for ins, diff in quotes.items():
                 for d in diff:
-                    self.diffs.append({"quotes": {ins: d}})
+                    self.diffs.append({
+                                          "quotes": {
+                                              ins: d
+                                          }
+                                      })
             if self.diffs:
                 rtn_data = {
                     "aid": "rtn_data",
@@ -171,7 +201,9 @@ class TqBacktest(object):
 
     async def _ensure_serial(self, ins, dur):
         if (ins, dur) not in self.serials:
-            quote = self.quotes.setdefault(ins, {"min_duration": dur})
+            quote = self.quotes.setdefault(ins, {
+                "min_duration": dur
+            })
             quote["min_duration"] = min(quote["min_duration"], dur)
             self.serials[(ins, dur)] = {
                 "generator": self._gen_serial(ins, dur),
@@ -197,7 +229,7 @@ class TqBacktest(object):
         # 因此将 view_width 和 focus_position 设置成一样，这样 focus_datetime 所对应的 k线刚好位于屏幕外
         chart_info = {
             "aid": "set_chart",
-            "chart_id": TqApi._generate_chart_id("backtest", ins, dur//1000000000),
+            "chart_id": TqApi._generate_chart_id("backtest", ins, dur // 1000000000),
             "ins_list": ins,
             "duration": dur,
             "view_width": 8964,
@@ -251,7 +283,7 @@ class TqBacktest(object):
                                         "last_id": current_id,
                                         "data": {
                                             str(current_id): item,
-                                            str(current_id-8964): None,
+                                            str(current_id - 8964): None,
                                         }
                                     }
                                 }
@@ -276,13 +308,14 @@ class TqBacktest(object):
                                                     "open_oi": item["open_oi"],
                                                     "close_oi": item["open_oi"],
                                                 },
-                                                str(current_id-8964): None,
+                                                str(current_id - 8964): None,
                                             }
                                         }
                                     }
                                 }
                             }
-                            timestamp = item["datetime"] if dur < 86400000000000 else TqApi._get_trading_day_start_time(item["datetime"])
+                            timestamp = item["datetime"] if dur < 86400000000000 else TqApi._get_trading_day_start_time(
+                                item["datetime"])
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return
                             yield timestamp, diff, None
@@ -297,10 +330,13 @@ class TqBacktest(object):
                                     }
                                 }
                             }
-                            timestamp = item["datetime"] + dur - 1000 if dur < 86400000000000 else TqApi._get_trading_day_end_time(item["datetime"])
+                            timestamp = item[
+                                            "datetime"] + dur - 1000 if dur < 86400000000000 else TqApi._get_trading_day_end_time(
+                                item["datetime"])
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return
-                            yield timestamp, diff, self._get_quotes_from_kline(self.data["quotes"][ins], timestamp, item)
+                            yield timestamp, diff, self._get_quotes_from_kline(self.data["quotes"][ins], timestamp,
+                                                                               item)
                         current_id += 1
             finally:
                 # 释放chart资源
@@ -318,7 +354,7 @@ class TqBacktest(object):
         return [
             {
                 "datetime": datetime.fromtimestamp(timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
-                "ask_price1":  kline["high"] + info["price_tick"],
+                "ask_price1": kline["high"] + info["price_tick"],
                 "ask_volume1": 1,
                 "bid_price1": kline["high"] - info["price_tick"],
                 "bid_volume1": 1,
@@ -331,12 +367,11 @@ class TqBacktest(object):
                 "open_interest": kline["close_oi"],
             },
             {
-                "ask_price1":  kline["low"] + info["price_tick"],
+                "ask_price1": kline["low"] + info["price_tick"],
                 "bid_price1": kline["low"] - info["price_tick"],
             },
             {
-                "ask_price1":  kline["close"] + info["price_tick"],
+                "ask_price1": kline["close"] + info["price_tick"],
                 "bid_price1": kline["close"] - info["price_tick"],
             }
         ]
-

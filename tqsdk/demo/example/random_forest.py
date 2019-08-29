@@ -5,7 +5,7 @@ __author__ = 'limin'
 import pandas as pd
 import datetime
 from contextlib import closing
-from tqsdk import TqApi, TqSim, TqBacktest, BacktestFinished, TargetPosTask
+from tqsdk import TqApi, TqBacktest, BacktestFinished, TargetPosTask
 from tqsdk.tafunc import sma, ema2, trma
 from sklearn.ensemble import RandomForestClassifier
 
@@ -15,6 +15,7 @@ pd.set_option('display.width', None)  # 设置Pandas显示的宽度
 '''
 应用随机森林对某交易日涨跌情况的预测(使用sklearn包)
 参考:https://www.joinquant.com/post/1571
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
 symbol = "SHFE.ru1811"  # 交易合约代码
@@ -41,7 +42,7 @@ def get_prediction_data(klines, n):
 
 
 predictions = []  # 用于记录每次的预测结果(在每个交易日收盘时用收盘数据预测下一交易日的涨跌,并记录在此列表里)
-api = TqApi(TqSim(), backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)))
+api = TqApi(backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)))
 quote = api.get_quote(symbol)
 klines = api.get_kline_serial(symbol, duration_seconds=24 * 60 * 60)  # 日线
 target_pos = TargetPosTask(api, symbol)
@@ -54,7 +55,7 @@ with closing(api):
                 api.wait_update()
                 # 在收盘后预测下一交易日的涨跌情况
                 if api.is_changing(quote, "datetime"):
-                    now = datetime.datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")  # 当前quote的时间
+                    now = datetime.datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f")  # 当前quote的时间
                     # 判断是否到达预定收盘时间: 如果到达 则认为本交易日收盘, 此时预测下一交易日的涨跌情况, 并调整为对应仓位
                     if now.hour == close_hour and now.minute >= close_minute:
                         # 1- 获取数据
@@ -68,10 +69,10 @@ with closing(api):
 
                         # 3- 进行交易
                         if predictions[-1] == True:  # 如果预测结果为涨: 买入
-                            print(quote["datetime"], "预测下一交易日为 涨")
+                            print(quote.datetime, "预测下一交易日为 涨")
                             target_pos.set_target_volume(10)
                         else:  # 如果预测结果为跌: 卖出
-                            print(quote["datetime"], "预测下一交易日为 跌")
+                            print(quote.datetime, "预测下一交易日为 跌")
                             target_pos.set_target_volume(-10)
                         break
 

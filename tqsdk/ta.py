@@ -33,8 +33,8 @@ def ATR(df, n):
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         atr = ATR(klines, 14)
-        print(atr["tr"])  # 真实波幅
-        print(atr["atr"])  # 平均真实波幅
+        print(atr.tr)  # 真实波幅
+        print(atr.atr)  # 平均真实波幅
 
         # 预计的输出是这样的:
         [..., 143.0, 48.0, 80.0, ...]
@@ -1017,7 +1017,7 @@ def BBIBOLL(df, n, m):
     """
     new_df = pd.DataFrame()
     new_df["bbiboll"] = (tafunc.ma(df["close"], 3) + tafunc.ma(df["close"], 6) + tafunc.ma(df["close"],
-                                                                                              12) + tafunc.ma(
+                                                                                           12) + tafunc.ma(
         df["close"], 24)) / 4
     new_df["upr"] = new_df["bbiboll"] + m * new_df["bbiboll"].rolling(n).std()
     new_df["dwn"] = new_df["bbiboll"] - m * new_df["bbiboll"].rolling(n).std()

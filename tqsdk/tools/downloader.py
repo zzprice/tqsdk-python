@@ -13,6 +13,7 @@ class DataDownloader:
 
     多合约按时间横向对齐
     """
+
     def __init__(self, api, symbol_list, dur_sec, start_dt, end_dt, csv_file_name):
         """
         创建历史数据下载器实例
@@ -61,13 +62,15 @@ class DataDownloader:
         """
         self.api = api
         if isinstance(start_dt, datetime):
-            self.start_dt_nano = int(start_dt.timestamp()*1e9)
+            self.start_dt_nano = int(start_dt.timestamp() * 1e9)
         else:
-            self.start_dt_nano = TqApi._get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp())*1000000000)
+            self.start_dt_nano = TqApi._get_trading_day_start_time(
+                int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         if isinstance(end_dt, datetime):
-            self.end_dt_nano = int(end_dt.timestamp()*1e9)
+            self.end_dt_nano = int(end_dt.timestamp() * 1e9)
         else:
-            self.end_dt_nano = TqApi._get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp())*1000000000)
+            self.end_dt_nano = TqApi._get_trading_day_end_time(
+                int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         self.current_dt_nano = self.start_dt_nano
         self.symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         self.dur_nano = dur_sec * 1000000000
@@ -92,7 +95,8 @@ class DataDownloader:
         Returns:
             float: 下载进度,100表示下载完成
         """
-        return 100.0 if self.task.done() else (self.current_dt_nano - self.start_dt_nano) / (self.end_dt_nano - self.start_dt_nano) * 100
+        return 100.0 if self.task.done() else (self.current_dt_nano - self.start_dt_nano) / (
+                    self.end_dt_nano - self.start_dt_nano) * 100
 
     async def _download_data(self):
         """下载数据, 多合约横向按时间对齐"""
@@ -106,16 +110,17 @@ class DataDownloader:
             "focus_position": 0,
         }
         # 还没有发送过任何请求, 先请求定位左端点
-        await self.api.send_chan.send(chart_info)
-        chart = self.api._get_obj(self.api.data, ["charts", chart_info["chart_id"]])
+        await self.api._send_chan.send(chart_info)
+        chart = self.api._get_obj(self.api._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
         csv_header = []
         data_cols = ["open", "high", "low", "close", "volume", "open_oi", "close_oi"] if self.dur_nano != 0 else \
-            ["last_price", "highest", "lowest", "bid_price1", "bid_volume1", "ask_price1", "ask_volume1", "volume", "amount", "open_interest"]
+            ["last_price", "highest", "lowest", "bid_price1", "bid_volume1", "ask_price1", "ask_volume1", "volume",
+             "amount", "open_interest"]
         serials = []
         for symbol in self.symbol_list:
             path = ["klines", symbol, str(self.dur_nano)] if self.dur_nano != 0 else ["ticks", symbol]
-            serial = self.api._get_obj(self.api.data, path)
+            serial = self.api._get_obj(self.api._data, path)
             serials.append(serial)
         try:
             with open(self.csv_file_name, 'w', newline='') as csvfile:
@@ -127,7 +132,7 @@ class DataDownloader:
                             continue
                         left_id = chart.get("left_id", -1)
                         right_id = chart.get("right_id", -1)
-                        if (left_id == -1 and right_id == -1) or self.api.data.get("mdhis_more_data", True):
+                        if (left_id == -1 and right_id == -1) or self.api._data.get("mdhis_more_data", True):
                             # 定位信息还没收到, 或数据序列还没收到
                             continue
                         for serial in serials:
@@ -146,7 +151,7 @@ class DataDownloader:
                                 csv_header = ["datetime"]
                                 for symbol in self.symbol_list:
                                     for col in data_cols:
-                                        csv_header.append(symbol+"."+col)
+                                        csv_header.append(symbol + "." + col)
                                 csv_writer.writerow(csv_header)
                             row = [self._nano_to_str(item["datetime"])]
                             for col in data_cols:
@@ -164,10 +169,10 @@ class DataDownloader:
                         chart_info.pop("focus_datetime", None)
                         chart_info.pop("focus_position", None)
                         chart_info["left_kline_id"] = current_id
-                        await self.api.send_chan.send(chart_info)
+                        await self.api._send_chan.send(chart_info)
         finally:
             # 释放chart资源
-            await self.api.send_chan.send({
+            await self.api._send_chan.send({
                 "aid": "set_chart",
                 "chart_id": chart_info["chart_id"],
                 "ins_list": "",

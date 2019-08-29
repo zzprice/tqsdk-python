@@ -32,11 +32,11 @@
 
 首先, 必须引入 tqsdk 模块::
 
-    from tqsdk import TqApi, TqSim
+    from tqsdk import TqApi
 
-创建API实例. 需要指定交易帐号. 如果使用API自带的模拟功能可以指定为 TqSim::
+创建API实例::
 
-    api = TqApi(TqSim())
+    api = TqApi()
 
 获得上期所 cu1812 合约的行情引用::
 
@@ -44,14 +44,14 @@
 
 现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.cu1812 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
 
-    print (quote["last_price"], quote["volume"])
+    print (quote.last_price, quote.volume)
 
 
 要等待行情数据更新, 我们还需要一些代码::
 
     while True:
         api.wait_update()
-        print (quote["datetime"], quote["last_price"])
+        print (quote.datetime, quote.last_price)
 
 :py:meth:`~tqsdk.api.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
@@ -102,8 +102,8 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 与行情数据一样, 它们也通过 api.wait_update() 获得更新, 你也同样可以访问它们的成员变量::
 
-    print("可用资金: %.2f" % (account["available"]))
-    print("今多头: %d 手" % (position["volume_long_today"]))
+    print("可用资金: %.2f" % (account.available))
+    print("今多头: %d 手" % (position.volume_long_today))
 
 要在交易账户中发出一个委托单, 使用 api.insert_order() 函数::
 
@@ -111,7 +111,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 这个函数调用后会立即返回, order 是一个指向此委托单的引用对象, 你总是可以通过它的成员变量来了解委托单的最新状态::
 
-    print("委托单状态: %s, 已成交: %d 手" % (order["status"], order["volume_orign"] - order["volume_left"]))
+    print("委托单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
 要撤销一个委托单, 使用 api.cancel_order() 函数::
 
@@ -158,7 +158,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
     while True:
         api.wait_update()
         if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-            spread = quote_near["last_price"] - quote_deferred["last_price"]
+            spread = quote_near.last_price - quote_deferred.last_price
             print("当前价差:", spread)
             if spread > 200:
                 print("目标持仓: 空近月，多远月")
@@ -180,7 +180,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 自己的交易程序写好以后, 我们总是希望在实盘运行前, 能先进行一下模拟测试. 要进行模拟测试, 只需要在创建TqApi实例时, 传入一个backtest参数::
 
-    api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+    api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
@@ -189,11 +189,13 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 实盘交易
 -------------------------------------------------
-要让策略程序在实盘账号运行, 请使用 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
+要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
 
   api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 
-目前支持的期货公司列表, 请见 :ref:`broker_list` . 
+目前支持的期货公司列表, 请见 :ref:`broker_list` .
+
+关于实盘交易的详细信息, 请见 :ref:`trade`
 
 
 更多内容

@@ -5,16 +5,17 @@ __author__ = 'limin'
 '''
 Dual Thrust策略
 参考: https://www.shinnytech.com/blog/dual-thrust
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "DCE.jd1909"  # 合约代码
+SYMBOL = "DCE.jd2001"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
 
-api = TqApi(TqSim())
+api = TqApi()
 print("策略开始运行")
 
 quote = api.get_quote(SYMBOL)
@@ -43,10 +44,10 @@ while True:
         buy_line, sell_line = dual_thrust(quote, klines)
 
     if api.is_changing(quote, "last_price"):
-        if quote["last_price"] > buy_line:  # 高于上轨
+        if quote.last_price > buy_line:  # 高于上轨
             print("高于上轨,目标持仓 多头3手")
             target_pos.set_target_volume(3)  # 交易
-        elif quote["last_price"] < sell_line:  # 低于下轨
+        elif quote.last_price < sell_line:  # 低于下轨
             print("低于下轨,目标持仓 空头3手")
             target_pos.set_target_volume(-3)  # 交易
         else:

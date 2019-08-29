@@ -2,6 +2,52 @@
 
 版本变更
 =============================
+0.9.17 (2019/08/27)
+
+* 修复: TqApi.copy()创建slave实例时工作不正常的bug
+* 改进行情订阅信息同步到天勤的机制
+* 改进TqSdk运行错误传递给天勤的机制
+* 将TqApi的私有成员名字前加前缀下划线
+* 增加各公开函数的返回值类型标注
+* 支持使用email地址作为模拟交易账号
+* 增强TargetPosTask及指标函数等内容的说明文档
+
+
+0.9.15 (2019/08/14)
+
+* 调整tqsdk与天勤的连接机制
+* 去除get_order()及get_position()等函数的返回值中与业务无关的"_path", "_listener" 数据, 使其只返回业务数据
+* 添加对公开函数输入值类型及范围的检查
+
+
+0.9.9 (2019/07/22)
+
+* 持仓对象 :py:class:`~tqsdk.objs.Position` 增加了实时持仓手数属性 pos_long_his, pos_long_today, pos_short_his, pos_short_today ，这些属性在成交时与成交记录同步更新
+* 修正 :py:class:`~tqsdk.lib.TargetPosTask` 因为持仓手数更新不同步导致下单手数错误的bug
+* 取消交易单元机制
+
+
+0.9.8 (2019/06/17):
+
+* :py:class:`~tqsdk.api.TqApi` 增加 copy 函数，支持在一个进程中用master/slave模式创建多个TqApi实例
+
+
+0.9.7 (2019/06/03):
+
+* 修正持仓数据不能 copy() 的问题
+
+
+0.9.6 (2019/05/30):
+
+* :py:class:`~tqsdk.objs.Quote`, :py:class:`~tqsdk.objs.Account`, :py:class:`~tqsdk.objs.Position`, :py:class:`~tqsdk.objs.Order`, :py:class:`~tqsdk.objs.Trade` 的成员变量名在IDE中支持自动补全(Pycharm测试可用)
+* :py:class:`~tqsdk.objs.Order` 增加了 :py:meth:`~tqsdk.objs.Order.is_dead` 属性 - 用于判定委托单是否确定已死亡（以后一定不会再产生成交）
+* :py:class:`~tqsdk.objs.Order` 增加了 :py:meth:`~tqsdk.objs.Order.is_online` 属性 - 用于判定这个委托单是否确定已报入交易所（即下单成功，无论是否成交）
+* :py:class:`~tqsdk.objs.Order` 增加了 :py:meth:`~tqsdk.objs.Order.is_error` 属性 - 用于判定这个委托单是否确定是错单（即下单失败，一定不会有成交）
+* :py:class:`~tqsdk.objs.Order` 增加了 :py:meth:`~tqsdk.objs.Order.trade_price` 属性 - 委托单的平均成交价
+* :py:class:`~tqsdk.objs.Order` 增加了 :py:meth:`~tqsdk.objs.Order.trade_records` 属性 - 委托单的成交记录
+* 文档细节修正
+
+
 0.9.5 (2019/05/24):
 
 * 加入期货公司次席支持, 创建 TqAccount 时可以通过 front_broker 和 front_url 参数指定次席服务器
